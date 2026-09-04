@@ -10,6 +10,7 @@ public:
     HomeSeries();
     ~HomeSeries() override = default;
 
+    void willAppear(bool resetState = false) override;
     void reload();
     void openSeries(const tsvitch::XtreamSeries& series);
     void downloadFocused();
@@ -20,6 +21,9 @@ private:
     void showEpisodePicker(const tsvitch::XtreamSeries& series,
                            const tsvitch::XtreamSeriesInfo& info,
                            bool downloadMode);
+
+    bool loaded = false;
+    bool loading = false;
 
     BRLS_BIND(RecyclingGrid, recyclingGrid, "nx/series/grid");
     BRLS_BIND(brls::Label, statusLabel, "nx/series/status");
