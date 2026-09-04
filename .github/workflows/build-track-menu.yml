@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
 
       - name: Apply subtitle/audio menu patch
-        run: git apply .github/patches/subtitle-audio-menu.patch
+        run: patch -p1 --fuzz=3 < .github/patches/subtitle-audio-menu.patch
 
       - name: Build Nintendo Switch NRO
         run: |
