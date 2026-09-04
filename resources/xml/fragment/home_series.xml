@@ -51,7 +51,7 @@
                 justifyContent="center">
             <brls:Label
                     id="nx/series/status"
-                    text="Dizi arşivi yükleniyor…"
+                    text="Diziler"
                     fontSize="13"
                     textColor="@theme/font/grey"/>
         </brls:Box>
@@ -75,7 +75,7 @@
             width="100%"
             spanCount="@style/tsvitch/grid/span/5"
             itemHeight="300"
-            preFetchLine="2"
+            preFetchLine="0"
             paddingBottom="20"
             wireframe="false"/>
 </brls:Box>
