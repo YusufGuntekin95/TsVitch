@@ -31,29 +31,26 @@ MainActivity::~MainActivity() { brls::Logger::debug("del MainActivity"); }
 
 void MainActivity::onContentAvailable() {
     brls::Logger::info("MainActivity::onContentAvailable() called");
-    
-    // Controlla la connettività internet
-    bool hasInternet = brls::Application::getPlatform()->hasEthernetConnection() || 
-                      brls::Application::getPlatform()->hasWirelessConnection();
-    
+
+    bool hasInternet = brls::Application::getPlatform()->hasEthernetConnection() ||
+                       brls::Application::getPlatform()->hasWirelessConnection();
+
     if (!hasInternet) {
-        brls::Logger::info("No internet connection detected, navigating to Downloads tab");
-        // Se non c'è internet, vai direttamente al tab Downloads (indice 2)
+        brls::Logger::info("İnternet yok; İndirilenler sekmesine geçiliyor");
         if (this->tabFrame) {
-            this->tabFrame->focusTab(2); // Assumendo che Downloads sia il 3° tab (indice 2)
+            this->tabFrame->focusTab(3);
         }
     }
+
     this->registerAction(
-        "Settings", brls::ControllerButton::BUTTON_BACK,
+        "Ayarlar", brls::ControllerButton::BUTTON_BACK,
         [this](brls::View* view) -> bool {
             Intent::openSettings([this]() {
-                // Check if settingBtn is still bound and valid
                 try {
                     if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
                         this->resetSettingIcon();
                     }
                 } catch (...) {
-                    // Ignore any exceptions from accessing destroyed objects
                 }
             });
             return true;
@@ -61,16 +58,14 @@ void MainActivity::onContentAvailable() {
         true);
 
     this->registerAction(
-        "Settings", brls::ControllerButton::BUTTON_START,
+        "Ayarlar", brls::ControllerButton::BUTTON_START,
         [this](brls::View* view) -> bool {
             Intent::openSettings([this]() {
-                // Check if settingBtn is still bound and valid
                 try {
                     if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
                         this->resetSettingIcon();
                     }
                 } catch (...) {
-                    // Ignore any exceptions from accessing destroyed objects
                 }
             });
             return true;
@@ -79,45 +74,39 @@ void MainActivity::onContentAvailable() {
 
     this->settingBtn->registerClickAction([this](brls::View* view) -> bool {
         Intent::openSettings([this]() {
-            // Check if settingBtn is still bound and valid
             try {
                 if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
                     this->resetSettingIcon();
                 }
             } catch (...) {
-                // Ignore any exceptions from accessing destroyed objects
             }
         });
         return true;
     });
 
     this->settingBtn->getFocusEvent()->subscribe([this](bool value) {
-        // Safety check: ensure settingBtn still exists and has children
         try {
             if (!this->settingBtn.getView() || this->settingBtn->getChildren().empty()) {
                 return;
             }
-            
+
             SVGImage* image = dynamic_cast<SVGImage*>(this->settingBtn->getChildren()[0]);
             if (!image) return;
             if (value) {
                 image->setImageFromSVGRes("svg/ico-setting-activate.svg");
-                //wait
             } else {
                 image->setImageFromSVGRes("svg/ico-setting.svg");
             }
         } catch (...) {
-            // Ignore any exceptions from accessing destroyed objects
         }
     });
 
     this->settingBtn->setCustomNavigation([this](brls::FocusDirection direction) {
-        // Safety check: ensure tabFrame still exists
         try {
             if (!this->tabFrame.getView()) {
                 return (brls::View*)nullptr;
             }
-            
+
             if (tabFrame->getSideBarPosition() == AutoTabBarPosition::LEFT) {
                 if (direction == brls::FocusDirection::RIGHT) {
                     return (brls::View*)this->tabFrame->getActiveTab();
@@ -136,17 +125,15 @@ void MainActivity::onContentAvailable() {
 }
 
 void MainActivity::resetSettingIcon() {
-    // Safety check: ensure settingBtn still exists and has children
     try {
         if (!this->settingBtn.getView() || this->settingBtn->getChildren().empty()) {
             return;
         }
-        
+
         SVGImage* image = dynamic_cast<SVGImage*>(this->settingBtn->getChildren()[0]);
         if (!image) return;
 
         image->setImageFromSVGRes("svg/ico-setting.svg");
     } catch (...) {
-        // Ignore any exceptions from accessing destroyed objects
     }
 }
