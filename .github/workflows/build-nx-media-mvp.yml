@@ -63,6 +63,57 @@ jobs:
           p.write_text(s, encoding='utf-8')
           PY
 
+      - name: Brand NX Media and harden player startup
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          cmake = Path('CMakeLists.txt')
+          s = cmake.read_text(encoding='utf-8')
+          old = 'COMMAND ${NX_NACPTOOL_EXE} --create ${PROJECT_NAME} ${PROJECT_AUTHOR} ${APP_VERSION} ${PROJECT_NAME}.nacp'
+          new = 'COMMAND ${NX_NACPTOOL_EXE} --create "NX Media" "YusufGuntekin95" ${APP_VERSION} ${PROJECT_NAME}.nacp'
+          if old not in s and 'NX Media' not in s:
+              raise SystemExit('Switch NACP branding anchor not found')
+          s = s.replace(old, new, 1)
+          cmake.write_text(s, encoding='utf-8')
+
+          player = Path('tsvitch/source/activity/live_player_activity.cpp')
+          s = player.read_text(encoding='utf-8')
+
+          video_needle = '    video = dynamic_cast<VideoView*>(this->getView("video"));\n'
+          if 'NX Media: VideoView not found' not in s:
+              if video_needle not in s:
+                  raise SystemExit('VideoView anchor not found')
+              s = s.replace(video_needle, video_needle + '''    if (!video) {
+              brls::Logger::error("NX Media: VideoView not found; aborting player startup");
+              brls::Application::popActivity();
+              return;
+          }
+          ''', 1)
+
+          ad_pattern = re.compile(
+              r'(?P<i>^[ \t]*)this->getAdUrlFromServer\(\[&\]\(const std::string& adUrl\) \{\n'
+              r'(?P=i)    brls::Logger::debug\("LiveActivity: adUrl: \{\}", adUrl\);\n'
+              r'(?P=i)    if \(!adUrl\.empty\(\)\) \{\n'
+              r'(?P=i)        this->startAd\(adUrl\);\n'
+              r'(?P=i)    \} else \{\n'
+              r'(?P=i)        this->startLive\(\);\n'
+              r'(?P=i)    \}\n'
+              r'(?P=i)\}\);', re.M)
+          s, replaced = ad_pattern.subn(lambda m: m.group('i') + 'this->startLive();', s)
+          if replaced == 0 and 'NX Media direct playback' not in s:
+              raise SystemExit('Ad gate blocks not found')
+
+          s = s.replace('    this->video->hideSubtitleSetting();\n', '')
+          marker = '    brls::Logger::debug("LiveActivity: onContentAvailable");\n'
+          if 'NX Media direct playback' not in s:
+              s = s.replace(marker, marker + '    brls::Logger::info("NX Media direct playback: ad backend bypassed");\n', 1)
+
+          player.write_text(s, encoding='utf-8')
+          print(f'Bypassed {replaced} TsVitch ad gate(s)')
+          PY
+
       - name: Inject Switch subtitle renderer fix
         run: |
           python3 - <<'PY'
