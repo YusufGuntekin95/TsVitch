@@ -12,7 +12,7 @@ namespace {
 
 static void configureXtream() {
     auto& config = ProgramConfig::instance();
-    XtreamAPI::instance().setCredentials(
+    tsvitch::XtreamAPI::instance().setCredentials(
         config.getXtreamServerUrl(),
         config.getXtreamUsername(),
         config.getXtreamPassword());
@@ -43,7 +43,7 @@ public:
         media.logo = movie.stream_icon;
         media.groupTitle = "Filmler";
         media.url = movie.direct_source.empty()
-            ? XtreamAPI::instance().getMovieUrl(movie.stream_id, movie.container_extension)
+            ? tsvitch::XtreamAPI::instance().getMovieUrl(movie.stream_id, movie.container_extension)
             : movie.direct_source;
         std::vector<tsvitch::LiveM3u8> playlist{media};
         Intent::openLive(playlist, 0, []() {});
@@ -78,7 +78,7 @@ void HomeVod::reload() {
     statusLabel->setVisibility(brls::Visibility::VISIBLE);
     recyclingGrid->showSkeleton();
 
-    XtreamAPI::instance().getAllVodStreams([this](const std::vector<tsvitch::XtreamMovie>& movies, bool success, const std::string& error) {
+    tsvitch::XtreamAPI::instance().getAllVodStreams([this](const std::vector<tsvitch::XtreamMovie>& movies, bool success, const std::string& error) {
         if (!success) {
             brls::Logger::error("NX Media VOD: {}", error);
             statusLabel->setText("Film arşivi yüklenemedi");
@@ -95,7 +95,7 @@ void HomeVod::downloadFocused() {
     if (!card || card->getMediaId().empty()) return;
 
     configureXtream();
-    const std::string url = XtreamAPI::instance().getMovieUrl(card->getMediaId(), card->getExtension());
+    const std::string url = tsvitch::XtreamAPI::instance().getMovieUrl(card->getMediaId(), card->getExtension());
     if (url.empty()) return;
 
     const std::string id = DownloadManager::instance().startDownload(card->getTitle(), url, card->getImageUrl());
