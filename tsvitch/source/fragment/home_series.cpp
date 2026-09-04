@@ -12,7 +12,7 @@ namespace {
 
 static void configureXtreamSeries() {
     auto& config = ProgramConfig::instance();
-    XtreamAPI::instance().setCredentials(
+    tsvitch::XtreamAPI::instance().setCredentials(
         config.getXtreamServerUrl(),
         config.getXtreamUsername(),
         config.getXtreamPassword());
@@ -70,7 +70,7 @@ void HomeSeries::reload() {
     statusLabel->setText("Dizi arşivi yükleniyor…");
     recyclingGrid->showSkeleton();
 
-    XtreamAPI::instance().getAllSeries([this](const std::vector<tsvitch::XtreamSeries>& data, bool success, const std::string& error) {
+    tsvitch::XtreamAPI::instance().getAllSeries([this](const std::vector<tsvitch::XtreamSeries>& data, bool success, const std::string& error) {
         if (!success) {
             brls::Logger::error("NX Media Series: {}", error);
             statusLabel->setText("Dizi arşivi yüklenemedi");
@@ -88,7 +88,7 @@ void HomeSeries::reload() {
 void HomeSeries::openSeries(const tsvitch::XtreamSeries& series) {
     configureXtreamSeries();
     statusLabel->setText(series.name + " • bölümler yükleniyor…");
-    XtreamAPI::instance().getSeriesInfo(series.series_id,
+    tsvitch::XtreamAPI::instance().getSeriesInfo(series.series_id,
         [this, series](const tsvitch::XtreamSeriesInfo& info, bool success, const std::string& error) {
             if (!success) {
                 statusLabel->setText("Bölümler yüklenemedi");
@@ -111,7 +111,7 @@ void HomeSeries::downloadFocused() {
 
     configureXtreamSeries();
     statusLabel->setText(series.name + " • indirilecek bölüm seçiliyor…");
-    XtreamAPI::instance().getSeriesInfo(series.series_id,
+    tsvitch::XtreamAPI::instance().getSeriesInfo(series.series_id,
         [this, series](const tsvitch::XtreamSeriesInfo& info, bool success, const std::string& error) {
             if (!success) {
                 statusLabel->setText("Bölümler yüklenemedi");
@@ -144,7 +144,7 @@ void HomeSeries::showEpisodePicker(const tsvitch::XtreamSeries& series,
         [this, series, episodes = info.episodes, downloadMode](int selected) {
             if (selected < 0 || static_cast<size_t>(selected) >= episodes.size()) return;
             const auto& episode = episodes[static_cast<size_t>(selected)];
-            const std::string url = XtreamAPI::instance().getEpisodeUrl(episode.id, episode.container_extension);
+            const std::string url = tsvitch::XtreamAPI::instance().getEpisodeUrl(episode.id, episode.container_extension);
             if (url.empty()) return;
 
             std::string episodeTitle = series.name + " S" + episode.season + "B" + episode.episode_num;
