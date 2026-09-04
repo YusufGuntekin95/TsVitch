@@ -23,7 +23,45 @@ jobs:
         run: patch -p1 --fuzz=3 < .github/patches/subtitle-audio-menu.patch
 
       - name: Register NX Media views and theme
-        run: patch -p1 --fuzz=3 < .github/patches/nx-media-ui-register.patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tsvitch/source/utils/register_helper.cpp')
+          s = p.read_text(encoding='utf-8')
+
+          include_anchor = '#include "fragment/home_downloads.hpp"\n'
+          if '#include "fragment/home_vod.hpp"' not in s:
+              s = s.replace(include_anchor,
+                  include_anchor + '#include "fragment/home_vod.hpp"\n#include "fragment/home_series.hpp"\n', 1)
+
+          register_anchor = '    brls::Application::registerXMLView("HomeDownloads", HomeDownloads::create);\n'
+          if 'registerXMLView("HomeVod"' not in s:
+              s = s.replace(register_anchor,
+                  register_anchor + '    brls::Application::registerXMLView("HomeVod", HomeVod::create);\n'
+                  '    brls::Application::registerXMLView("HomeSeries", HomeSeries::create);\n', 1)
+
+          theme_anchor = 'void Register::initCustomTheme() {\n'
+          if 'color/nx_background' not in s:
+              theme = '''void Register::initCustomTheme() {
+              brls::Theme::getLightTheme().addColor("color/nx_background", nvgRGB(244, 246, 249));
+              brls::Theme::getDarkTheme().addColor("color/nx_background", nvgRGB(16, 18, 23));
+              brls::Theme::getLightTheme().addColor("color/nx_sidebar", nvgRGB(232, 236, 241));
+              brls::Theme::getDarkTheme().addColor("color/nx_sidebar", nvgRGB(22, 25, 31));
+              brls::Theme::getLightTheme().addColor("color/nx_surface", nvgRGB(226, 231, 237));
+              brls::Theme::getDarkTheme().addColor("color/nx_surface", nvgRGB(31, 35, 43));
+              brls::Theme::getLightTheme().addColor("color/nx_badge", nvgRGB(46, 151, 137));
+              brls::Theme::getDarkTheme().addColor("color/nx_badge", nvgRGB(46, 151, 137));
+              brls::Theme::getLightTheme().addColor("color/nx_accent", nvgRGB(46, 184, 164));
+              brls::Theme::getDarkTheme().addColor("color/nx_accent", nvgRGB(85, 214, 194));
+          '''
+              if theme_anchor not in s:
+                  raise SystemExit('Theme anchor not found')
+              s = s.replace(theme_anchor, theme, 1)
+
+          if 'registerXMLView("HomeVod"' not in s:
+              raise SystemExit('HomeVod registration failed')
+          p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Inject Switch subtitle renderer fix
         run: |
