@@ -34,6 +34,8 @@ public:
     static View* create();
 
     void setupCommonSetting();
+    void setupTrackSetting();
+    void refreshTrackDetails();
 
 private:
     BRLS_BIND(ButtonClose, closebtn, "button/close");
@@ -46,6 +48,8 @@ private:
     BRLS_BIND(brls::BooleanCell, btnMirror, "setting/video/mirror");
 
     BRLS_BIND(brls::DetailCell, btnSleep, "setting/sleep");
+    BRLS_BIND(brls::DetailCell, btnSubtitle, "setting/track/subtitle");
+    BRLS_BIND(brls::DetailCell, btnAudioTrack, "setting/track/audio");
 
     BRLS_BIND(brls::RadioCell, btnEqualizerReset, "setting/equalizer/reset");
     BRLS_BIND(brls::SliderCell, btnEqualizerBrightness, "setting/equalizer/brightness");
