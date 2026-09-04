@@ -9,12 +9,16 @@ public:
     HomeVod();
     ~HomeVod() override = default;
 
+    void willAppear(bool resetState = false) override;
     void reload();
     void downloadFocused();
 
     static brls::View* create();
 
 private:
+    bool loaded = false;
+    bool loading = false;
+
     BRLS_BIND(RecyclingGrid, recyclingGrid, "nx/vod/grid");
     BRLS_BIND(brls::Label, statusLabel, "nx/vod/status");
 };
