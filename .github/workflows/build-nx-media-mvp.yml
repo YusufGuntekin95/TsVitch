@@ -19,6 +19,11 @@ jobs:
       - name: Prepare bundled subtitle font
         run: cp resources/font/switch_font.ttf resources/font/subfont.ttf
 
+      - name: Generate NX Media app icon
+        run: |
+          python3 -m pip install --user pillow
+          python3 scripts/generate_nx_media_icon.py
+
       - name: Register NX Media views and premium theme
         run: |
           python3 - <<'PY'
