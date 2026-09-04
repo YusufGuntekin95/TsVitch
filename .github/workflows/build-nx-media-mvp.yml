@@ -19,9 +19,6 @@ jobs:
       - name: Prepare bundled subtitle font
         run: cp resources/font/switch_font.ttf resources/font/subfont.ttf
 
-      - name: Apply audio/subtitle menu
-        run: patch -p1 --fuzz=3 < .github/patches/subtitle-audio-menu.patch
-
       - name: Register NX Media views and premium theme
         run: |
           python3 - <<'PY'
