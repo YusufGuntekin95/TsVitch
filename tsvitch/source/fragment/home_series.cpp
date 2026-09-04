@@ -61,16 +61,22 @@ HomeSeries::HomeSeries() {
         this->reload();
         return true;
     });
+}
 
-    reload();
+void HomeSeries::willAppear(bool resetState) {
+    brls::Box::willAppear(resetState);
+    if (!loaded && !loading) reload();
 }
 
 void HomeSeries::reload() {
+    if (loading) return;
+    loading = true;
     configureXtreamSeries();
     statusLabel->setText("Dizi arşivi yükleniyor…");
     recyclingGrid->showSkeleton();
 
     tsvitch::XtreamAPI::instance().getAllSeries([this](const std::vector<tsvitch::XtreamSeries>& data, bool success, const std::string& error) {
+        loading = false;
         if (!success) {
             brls::Logger::error("NX Media Series: {}", error);
             statusLabel->setText("Dizi arşivi yüklenemedi");
@@ -78,6 +84,7 @@ void HomeSeries::reload() {
             return;
         }
 
+        loaded = true;
         statusLabel->setText(std::to_string(data.size()) + " dizi");
         recyclingGrid->setDataSource(new SeriesDataSource(data, [this](const tsvitch::XtreamSeries& series) {
             this->openSeries(series);
