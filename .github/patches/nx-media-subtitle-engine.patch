@@ -1,0 +1,53 @@
+--- a/tsvitch/source/view/mpv_core.cpp
++++ b/tsvitch/source/view/mpv_core.cpp
+@@
+ #include <cstdlib>
+ #include <clocale>
++#include <fstream>
++#include <sys/stat.h>
+ #include <pystring.h>
+@@
+ void MPVCore::init() {
+     setlocale(LC_NUMERIC, "C");
++
++#if defined(__SWITCH__)
++    // Nintendo Switch builds do not have a normal desktop font provider.
++    // Install the bundled fallback font into mpv's config directory so
++    // libass can render SRT/ASS/SSA text subtitle tracks reliably.
++    const std::string subtitleConfigDir = ProgramConfig::instance().getConfigDir();
++    mkdir("/config", 0777);
++    mkdir(subtitleConfigDir.c_str(), 0777);
++    const std::string subtitleFontPath = subtitleConfigDir + "/subfont.ttf";
++    std::ifstream currentSubtitleFont(subtitleFontPath, std::ios::binary);
++    if (!currentSubtitleFont.good()) {
++        currentSubtitleFont.close();
++        std::ifstream bundledSubtitleFont("romfs:/font/subfont.ttf", std::ios::binary);
++        if (bundledSubtitleFont.good()) {
++            std::ofstream outputSubtitleFont(subtitleFontPath, std::ios::binary | std::ios::trunc);
++            outputSubtitleFont << bundledSubtitleFont.rdbuf();
++            outputSubtitleFont.close();
++            brls::Logger::info("Installed mpv subtitle fallback font: {}", subtitleFontPath);
++        } else {
++            brls::Logger::error("Bundled subtitle font could not be opened");
++        }
++    }
++#endif
++
+     this->mpv = mpvCreate();
+@@
+     mpvSetOptionString(mpv, "reset-on-next-file", "speed,pause");
+     mpvSetOptionString(mpv, "vo", "libmpv");
+     mpvSetOptionString(mpv, "pulse-latency-hacks", "no");
++
++#if defined(__SWITCH__)
++    // Force subtitle rendering on Switch.  The libass build used by the
++    // Switch port has no desktop system font service, so use our local font.
++    mpvSetOptionString(mpv, "sub-visibility", "yes");
++    mpvSetOptionString(mpv, "embeddedfonts", "yes");
++    mpvSetOptionString(mpv, "sub-font-provider", "none");
++    mpvSetOptionString(mpv, "sub-fonts-dir", ProgramConfig::instance().getConfigDir().c_str());
++    mpvSetOptionString(mpv, "sub-ass", "yes");
++    mpvSetOptionString(mpv, "sub-ass-override", "yes");
++#endif
+ 
+     mpvSetOption(mpv, "brightness", MPV_FORMAT_DOUBLE, &MPVCore::VIDEO_BRIGHTNESS);
