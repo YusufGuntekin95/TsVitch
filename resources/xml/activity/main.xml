@@ -5,45 +5,54 @@
     <brls:Box
             axis="column"
             width="100%"
-            height="100%">
+            height="100%"
+            backgroundColor="@theme/color/nx_background">
         <AutoTabFrame
                 id="main/tabFrame"
                 grow="1"
-                tabBackgroundColor="@theme/color/grey_1"
-                tabItemActiveTextColor="@theme/color/tsvitch"
+                tabBackgroundColor="@theme/color/nx_sidebar"
+                tabItemActiveTextColor="@theme/color/nx_accent"
                 disableNavigationDown="true"
                 defaultTab="0"
                 sidebarPosition="left">
 
-            <Tab label=""
-                 fontSize="18"
+            <Tab label="Canlı"
+                 fontSize="15"
                  icon="@res/svg/ico-home.svg"
                  iconActivate="@res/svg/ico-home-activate.svg">
                 <HomeLive/>
             </Tab>
 
-            <Tab label=""
-                 fontSize="18"
-                 icon="@res/svg/ico-favorites.svg"
-                 iconActivate="@res/svg/ico-favorites-activate.svg">
-                <HomeFavorites/>
+            <Tab label="Filmler"
+                 fontSize="15"
+                 icon="@res/svg/ico-movies.svg"
+                 iconActivate="@res/svg/ico-movies-activate.svg">
+                <HomeVod/>
             </Tab>
 
-            <Tab label=""
-                 fontSize="18"
+            <Tab label="Diziler"
+                 fontSize="15"
+                 icon="@res/svg/ico-series.svg"
+                 iconActivate="@res/svg/ico-series-activate.svg">
+                <HomeSeries/>
+            </Tab>
+
+            <Tab label="İndirilenler"
+                 fontSize="15"
                  icon="@res/svg/ico-downloads.svg"
                  iconActivate="@res/svg/ico-downloads-activate.svg">
                 <HomeDownloads/>
             </Tab>
 
-            <Tab label=""
-                 fontSize="18"
+            <Tab label="Favoriler"
+                 fontSize="15"
                  focusDown="main/setting"
-                 icon="@res/svg/ico-history.svg"
-                 iconActivate="@res/svg/ico-history-activate.svg">
-                <HomeHistory/>
+                 icon="@res/svg/ico-favorites.svg"
+                 iconActivate="@res/svg/ico-favorites-activate.svg">
+                <HomeFavorites/>
             </Tab>
         </AutoTabFrame>
+
         <brls:Box
                 wireframe="false"
                 width="100"
@@ -52,7 +61,6 @@
                 alignItems="center"
                 positionType="absolute"
                 positionBottom="20">
-
             <CustomButton
                     id="main/setting"
                     focusable="true"
@@ -60,8 +68,8 @@
                     cornerRadius="50"
                     wireframe="false">
                 <SVGImage
-                        width="48"
-                        height="48"
+                        width="44"
+                        height="44"
                         SVG="@res/svg/ico-setting.svg"/>
             </CustomButton>
         </brls:Box>
