@@ -68,23 +68,30 @@ HomeVod::HomeVod() {
         this->reload();
         return true;
     });
+}
 
-    reload();
+void HomeVod::willAppear(bool resetState) {
+    brls::Box::willAppear(resetState);
+    if (!loaded && !loading) reload();
 }
 
 void HomeVod::reload() {
+    if (loading) return;
+    loading = true;
     configureXtream();
     statusLabel->setText("Film arşivi yükleniyor…");
     statusLabel->setVisibility(brls::Visibility::VISIBLE);
     recyclingGrid->showSkeleton();
 
     tsvitch::XtreamAPI::instance().getAllVodStreams([this](const std::vector<tsvitch::XtreamMovie>& movies, bool success, const std::string& error) {
+        loading = false;
         if (!success) {
             brls::Logger::error("NX Media VOD: {}", error);
             statusLabel->setText("Film arşivi yüklenemedi");
             recyclingGrid->setError(error);
             return;
         }
+        loaded = true;
         statusLabel->setText(std::to_string(movies.size()) + " film");
         recyclingGrid->setDataSource(new VodDataSource(movies));
     });
