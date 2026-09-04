@@ -1,37 +1,53 @@
 <brls:Box
         wireframe="false"
-        highlightCornerRadius="14"
+        highlightCornerRadius="18"
         axis="column"
         width="auto"
         height="auto"
-        padding="6">
+        padding="7"
+        backgroundColor="@theme/color/nx_background">
 
     <brls:Box
             width="100%"
-            height="79%"
+            height="78%"
             backgroundColor="@theme/color/nx_surface"
-            cornerRadius="12">
+            cornerRadius="16">
         <brls:Image
                 id="nx/card/picture"
                 scalingType="fill"
                 width="100%"
                 height="100%"
-                cornerRadius="12" />
+                cornerRadius="16"/>
 
         <brls:Box
                 positionType="absolute"
                 positionLeft="10"
-                positionBottom="10"
-                height="25"
+                positionTop="10"
+                height="24"
                 paddingLeft="9"
                 paddingRight="9"
-                backgroundColor="@theme/color/nx_badge"
+                backgroundColor="@theme/color/nx_accent"
                 cornerRadius="12"
                 alignItems="center">
             <brls:Label
-                    text="NX MEDIA"
+                    text="NX"
                     fontSize="11"
-                    textColor="#ffffff" />
+                    textColor="#ffffff"/>
+        </brls:Box>
+
+        <brls:Box
+                positionType="absolute"
+                positionLeft="0"
+                positionRight="0"
+                positionBottom="0"
+                height="42"
+                paddingLeft="12"
+                alignItems="center"
+                backgroundColor="#99000000">
+            <brls:Label
+                    text="A  İZLE"
+                    fontSize="11"
+                    textColor="#ffffff"/>
         </brls:Box>
     </brls:Box>
 
@@ -39,16 +55,16 @@
             id="nx/card/title"
             marginTop="9"
             width="100%"
-            height="26"
-            fontSize="18"
-            textColor="@theme/brls/text"
-            singleLine="true" />
+            height="25"
+            fontSize="17"
+            textColor="#ffffff"
+            singleLine="true"/>
 
     <brls:Label
             id="nx/card/meta"
             width="100%"
-            height="20"
-            fontSize="13"
+            height="19"
+            fontSize="12"
             textColor="@theme/font/grey"
-            singleLine="true" />
+            singleLine="true"/>
 </brls:Box>
