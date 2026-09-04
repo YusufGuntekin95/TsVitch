@@ -1,63 +1,90 @@
 <brls:Box
-        axis="row"
-        width="auto"
-        marginTop="10"
-        height="auto">
-        <RecyclingGrid
-                width="270"
-                paddingLeft="10"
-                paddingRight="10"
-                marginTop="20"
-                marginBottom="8"
-                itemHeight="50"
-                preFetchLine="2"
-                spanCount="1"
-                wireframe="false"
-                lineColor="@theme/color/line"
-                lineRight="1"
-                id="dynamic/up/recyclingGrid" />
-        <RecyclingGrid
-                paddingLeft="20"
-                paddingRight="20"
-                marginTop="70"
-                grow="1"
-                spanCount="@style/tsvitch/grid/span/4"
-                itemHeight="200"
-                wireframe="false"
-                preFetchLine="2"
-                id="home/live/recyclingGrid" />
+        axis="column"
+        width="100%"
+        height="100%"
+        paddingLeft="30"
+        paddingRight="30"
+        paddingTop="22"
+        backgroundColor="@theme/color/nx_background">
 
-
-        <brls:Box
-                positionType="absolute"
-                positionRight="0"
-                positionTop="0"
-                width="340"
-                height="70"
-                alignItems="center"
-                wireframe="false">
-                <CustomButton
-                        id="home/search"
-                        focusable="true"
-                        highlightCornerRadius="8"
-                        hideHighlightBackground="true"
-                        width="300"
-                        height="35"
-                        backgroundColor="#E3E5E7"
-                        paddingLeft="15"
-                        cornerRadius="6">
-                        <brls:Label
-                                fontSize="14"
-                                textColor="#18191c"
-                                text="@i18n/tsvitch/home/common/search" />
-                        <HintLabel
-                                height="35"
-                                positionType="absolute"
-                                positionRight="15"
-                                fontSize="14"
-                                textColor="#18191c"
-                                text="y" />
-                </CustomButton>
+    <brls:Box
+            width="100%"
+            height="86"
+            marginBottom="14"
+            alignItems="center">
+        <brls:Box axis="column" grow="1">
+            <brls:Label
+                    text="CANLI TV"
+                    fontSize="28"
+                    textColor="#ffffff"/>
+            <brls:Label
+                    text="Kanallarını hızlıca seç ve kesintisiz izlemeye başla"
+                    marginTop="5"
+                    fontSize="14"
+                    textColor="@theme/font/grey"/>
         </brls:Box>
 
+        <CustomButton
+                id="home/search"
+                focusable="true"
+                highlightCornerRadius="20"
+                hideHighlightBackground="false"
+                width="260"
+                height="42"
+                backgroundColor="@theme/color/nx_surface"
+                paddingLeft="16"
+                cornerRadius="20">
+            <brls:Label
+                    fontSize="14"
+                    textColor="#ffffff"
+                    text="Ara"/>
+            <HintLabel
+                    height="42"
+                    positionType="absolute"
+                    positionRight="15"
+                    fontSize="14"
+                    textColor="@theme/color/nx_accent"
+                    text="y"/>
+        </CustomButton>
+    </brls:Box>
+
+    <brls:Box axis="row" grow="1" width="100%">
+        <brls:Box
+                width="260"
+                height="100%"
+                marginRight="18"
+                paddingTop="10"
+                paddingBottom="10"
+                backgroundColor="@theme/color/nx_surface"
+                cornerRadius="20">
+            <RecyclingGrid
+                    width="260"
+                    height="100%"
+                    paddingLeft="10"
+                    paddingRight="10"
+                    itemHeight="50"
+                    preFetchLine="2"
+                    spanCount="1"
+                    wireframe="false"
+                    id="dynamic/up/recyclingGrid"/>
+        </brls:Box>
+
+        <brls:Box
+                grow="1"
+                height="100%"
+                paddingTop="10"
+                paddingLeft="8"
+                paddingRight="8"
+                backgroundColor="@theme/color/nx_background"
+                cornerRadius="20">
+            <RecyclingGrid
+                    grow="1"
+                    height="100%"
+                    spanCount="@style/tsvitch/grid/span/4"
+                    itemHeight="200"
+                    wireframe="false"
+                    preFetchLine="2"
+                    id="home/live/recyclingGrid"/>
+        </brls:Box>
+    </brls:Box>
 </brls:Box>
