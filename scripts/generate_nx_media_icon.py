@@ -59,3 +59,40 @@ d.text(((SIZE - label_w) / 2, 188), label, font=font_media, fill=(210, 213, 221,
 OUT.parent.mkdir(parents=True, exist_ok=True)
 img.convert("RGB").save(OUT, "JPEG", quality=95, subsampling=0)
 print(f"Generated {OUT}")
+
+# NX Media must not share TsVitch's runtime data.  The old app and NX Media
+# can coexist on the same SD card without writing to the same config/cache.
+config = Path("tsvitch/source/utils/config_helper.cpp")
+source = config.read_text(encoding="utf-8")
+source = source.replace('return "/config/tsvitch";', 'return "/config/nxmedia";', 1)
+source = source.replace('this->getConfigDir() + "/tsvitch_config.json"',
+                        'this->getConfigDir() + "/nxmedia_config.json"')
+
+migration_marker = '    std::ifstream readFile(path);\n'
+if "NX Media one-time TsVitch config migration" not in source:
+    migration = '''#ifdef __SWITCH__
+    // NX Media one-time TsVitch config migration: copy only the settings file,
+    // then keep both apps fully isolated from this point on.
+    const std::string legacyConfigPath = "/config/tsvitch/tsvitch_config.json";
+    if (!cpr::fs::exists(path) && cpr::fs::exists(legacyConfigPath)) {
+        cpr::fs::create_directories(this->getConfigDir());
+        std::ifstream legacyConfig(legacyConfigPath, std::ios::binary);
+        std::ofstream nxConfig(path, std::ios::binary | std::ios::trunc);
+        if (legacyConfig && nxConfig) {
+            nxConfig << legacyConfig.rdbuf();
+            nxConfig.close();
+            legacyConfig.close();
+            brls::Logger::info("NX Media one-time TsVitch config migration completed");
+        }
+    }
+#endif
+
+'''
+    if migration_marker not in source:
+        raise SystemExit("NX Media config migration anchor not found")
+    source = source.replace(migration_marker, migration + migration_marker, 1)
+
+if 'return "/config/nxmedia";' not in source:
+    raise SystemExit("NX Media config directory patch failed")
+config.write_text(source, encoding="utf-8")
+print("NX Media runtime data isolated under /config/nxmedia")
