@@ -1,0 +1,30 @@
+--- a/tsvitch/source/utils/register_helper.cpp
++++ b/tsvitch/source/utils/register_helper.cpp
+@@
+ #include "fragment/home_history.hpp"
+ #include "fragment/home_favorites.hpp"
+ #include "fragment/home_downloads.hpp"
++#include "fragment/home_vod.hpp"
++#include "fragment/home_series.hpp"
+@@
+     brls::Application::registerXMLView("HomeHistory", HomeHistory::create);
+     brls::Application::registerXMLView("HomeFavorites", HomeFavorites::create);
+     brls::Application::registerXMLView("HomeDownloads", HomeDownloads::create);
++    brls::Application::registerXMLView("HomeVod", HomeVod::create);
++    brls::Application::registerXMLView("HomeSeries", HomeSeries::create);
+ }
+@@
+ void Register::initCustomTheme() {
++    // NX Media visual system: quiet dark surfaces with one clear focus accent.
++    brls::Theme::getLightTheme().addColor("color/nx_background", nvgRGB(244, 246, 249));
++    brls::Theme::getDarkTheme().addColor("color/nx_background", nvgRGB(16, 18, 23));
++    brls::Theme::getLightTheme().addColor("color/nx_sidebar", nvgRGB(232, 236, 241));
++    brls::Theme::getDarkTheme().addColor("color/nx_sidebar", nvgRGB(22, 25, 31));
++    brls::Theme::getLightTheme().addColor("color/nx_surface", nvgRGB(226, 231, 237));
++    brls::Theme::getDarkTheme().addColor("color/nx_surface", nvgRGB(31, 35, 43));
++    brls::Theme::getLightTheme().addColor("color/nx_badge", nvgRGB(46, 151, 137));
++    brls::Theme::getDarkTheme().addColor("color/nx_badge", nvgRGB(46, 151, 137));
++    brls::Theme::getLightTheme().addColor("color/nx_accent", nvgRGB(46, 184, 164));
++    brls::Theme::getDarkTheme().addColor("color/nx_accent", nvgRGB(85, 214, 194));
++
+     brls::Theme::getLightTheme().addColor("color/grey_1", nvgRGB(245, 246, 247));
