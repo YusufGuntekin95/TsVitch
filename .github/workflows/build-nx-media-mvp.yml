@@ -22,7 +22,7 @@ jobs:
       - name: Apply audio/subtitle menu
         run: patch -p1 --fuzz=3 < .github/patches/subtitle-audio-menu.patch
 
-      - name: Register NX Media views and theme
+      - name: Register NX Media views and premium theme
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -43,16 +43,16 @@ jobs:
           theme_anchor = 'void Register::initCustomTheme() {\n'
           if 'color/nx_background' not in s:
               theme = '''void Register::initCustomTheme() {
-              brls::Theme::getLightTheme().addColor("color/nx_background", nvgRGB(244, 246, 249));
-              brls::Theme::getDarkTheme().addColor("color/nx_background", nvgRGB(16, 18, 23));
-              brls::Theme::getLightTheme().addColor("color/nx_sidebar", nvgRGB(232, 236, 241));
-              brls::Theme::getDarkTheme().addColor("color/nx_sidebar", nvgRGB(22, 25, 31));
-              brls::Theme::getLightTheme().addColor("color/nx_surface", nvgRGB(226, 231, 237));
-              brls::Theme::getDarkTheme().addColor("color/nx_surface", nvgRGB(31, 35, 43));
-              brls::Theme::getLightTheme().addColor("color/nx_badge", nvgRGB(46, 151, 137));
-              brls::Theme::getDarkTheme().addColor("color/nx_badge", nvgRGB(46, 151, 137));
-              brls::Theme::getLightTheme().addColor("color/nx_accent", nvgRGB(46, 184, 164));
-              brls::Theme::getDarkTheme().addColor("color/nx_accent", nvgRGB(85, 214, 194));
+              brls::Theme::getLightTheme().addColor("color/nx_background", nvgRGB(8, 9, 12));
+              brls::Theme::getDarkTheme().addColor("color/nx_background", nvgRGB(8, 9, 12));
+              brls::Theme::getLightTheme().addColor("color/nx_sidebar", nvgRGB(13, 14, 18));
+              brls::Theme::getDarkTheme().addColor("color/nx_sidebar", nvgRGB(13, 14, 18));
+              brls::Theme::getLightTheme().addColor("color/nx_surface", nvgRGB(24, 26, 32));
+              brls::Theme::getDarkTheme().addColor("color/nx_surface", nvgRGB(24, 26, 32));
+              brls::Theme::getLightTheme().addColor("color/nx_badge", nvgRGB(224, 36, 48));
+              brls::Theme::getDarkTheme().addColor("color/nx_badge", nvgRGB(224, 36, 48));
+              brls::Theme::getLightTheme().addColor("color/nx_accent", nvgRGB(224, 36, 48));
+              brls::Theme::getDarkTheme().addColor("color/nx_accent", nvgRGB(224, 36, 48));
           '''
               if theme_anchor not in s:
                   raise SystemExit('Theme anchor not found')
@@ -131,20 +131,27 @@ jobs:
 
           #if defined(__SWITCH__)
               const std::string subtitleConfigDir = ProgramConfig::instance().getConfigDir();
+              const std::string subtitleFontsDir = subtitleConfigDir + "/fonts";
               mkdir("/config", 0777);
               mkdir(subtitleConfigDir.c_str(), 0777);
-              const std::string subtitleFontPath = subtitleConfigDir + "/subfont.ttf";
-              std::ifstream currentSubtitleFont(subtitleFontPath, std::ios::binary);
-              if (!currentSubtitleFont.good()) {
-                  currentSubtitleFont.close();
-                  std::ifstream bundledSubtitleFont("romfs:/font/subfont.ttf", std::ios::binary);
-                  if (bundledSubtitleFont.good()) {
-                      std::ofstream outputSubtitleFont(subtitleFontPath, std::ios::binary | std::ios::trunc);
-                      outputSubtitleFont << bundledSubtitleFont.rdbuf();
-                      outputSubtitleFont.close();
-                      brls::Logger::info("NX Media installed subtitle font: {}", subtitleFontPath);
-                  }
-              }
+              mkdir(subtitleFontsDir.c_str(), 0777);
+              mkdir("/switch/NXMedia", 0777);
+
+              auto installSubtitleFont = [](const std::string& targetPath) {
+                  std::ifstream currentFont(targetPath, std::ios::binary);
+                  if (currentFont.good()) return;
+                  currentFont.close();
+                  std::ifstream bundledFont("romfs:/font/subfont.ttf", std::ios::binary);
+                  if (!bundledFont.good()) return;
+                  std::ofstream outputFont(targetPath, std::ios::binary | std::ios::trunc);
+                  outputFont << bundledFont.rdbuf();
+                  outputFont.close();
+                  brls::Logger::info("NX Media installed subtitle font: {}", targetPath);
+              };
+
+              installSubtitleFont(subtitleConfigDir + "/subfont.ttf");
+              installSubtitleFont(subtitleFontsDir + "/subfont.ttf");
+              installSubtitleFont("/switch/NXMedia/subfont.ttf");
           #endif
           '''
           if 'NX Media installed subtitle font' not in s:
@@ -156,14 +163,22 @@ jobs:
           option_block = '''    mpvSetOptionString(mpv, "pulse-latency-hacks", "no");
 
           #if defined(__SWITCH__)
+              const std::string nxSubtitleFontsDir = ProgramConfig::instance().getConfigDir() + "/fonts";
               mpvSetOptionString(mpv, "sub-visibility", "yes");
+              mpvSetOptionString(mpv, "secondary-sub-visibility", "yes");
               mpvSetOptionString(mpv, "embeddedfonts", "yes");
               mpvSetOptionString(mpv, "sub-font-provider", "none");
-              mpvSetOptionString(mpv, "sub-fonts-dir", ProgramConfig::instance().getConfigDir().c_str());
+              mpvSetOptionString(mpv, "sub-fonts-dir", nxSubtitleFontsDir.c_str());
+              mpvSetOptionString(mpv, "sub-font", "sans-serif");
               mpvSetOptionString(mpv, "sub-ass", "yes");
-              mpvSetOptionString(mpv, "sub-ass-override", "yes");
-              mpvSetOptionString(mpv, "sub-border-size", "2.2");
-              mpvSetOptionString(mpv, "sub-font-size", "42");
+              mpvSetOptionString(mpv, "sub-ass-override", "strip");
+              mpvSetOptionString(mpv, "blend-subtitles", "yes");
+              mpvSetOptionString(mpv, "sub-pos", "94");
+              mpvSetOptionString(mpv, "sub-font-size", "40");
+              mpvSetOptionString(mpv, "sub-color", "#FFFFFFFF");
+              mpvSetOptionString(mpv, "sub-border-color", "#000000FF");
+              mpvSetOptionString(mpv, "sub-border-size", "2.4");
+              mpvSetOptionString(mpv, "sub-shadow-offset", "1.5");
           #endif
           '''
           if 'sub-font-provider' not in s:
