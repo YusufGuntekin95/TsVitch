@@ -304,7 +304,6 @@ void PlayerSetting::setupCommonSetting() {
     btnOnTopMode->setVisibility(brls::Visibility::GONE);
 #endif
 
-    btnEqualizerReset->setText("Sıfırla");
     btnEqualizerReset->registerClickAction([this](View* view) {
         btnEqualizerBrightness->slider->setProgress(0.5f);
         btnEqualizerContrast->slider->setProgress(0.5f);
