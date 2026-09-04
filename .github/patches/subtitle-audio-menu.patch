@@ -15,13 +15,13 @@
 +
 +std::string languageLabel(const std::string& lang) {
 +    if (lang == "tur" || lang == "tr") return "Türkçe";
-+    if (lang == "eng" || lang == "en") return "English";
-+    if (lang == "deu" || lang == "ger" || lang == "de") return "Deutsch";
-+    if (lang == "fra" || lang == "fre" || lang == "fr") return "Français";
-+    if (lang == "ita" || lang == "it") return "Italiano";
-+    if (lang == "spa" || lang == "es") return "Español";
-+    if (lang == "por" || lang == "pt") return "Português";
-+    if (lang == "ara" || lang == "ar") return "العربية";
++    if (lang == "eng" || lang == "en") return "İngilizce";
++    if (lang == "deu" || lang == "ger" || lang == "de") return "Almanca";
++    if (lang == "fra" || lang == "fre" || lang == "fr") return "Fransızca";
++    if (lang == "ita" || lang == "it") return "İtalyanca";
++    if (lang == "spa" || lang == "es") return "İspanyolca";
++    if (lang == "por" || lang == "pt") return "Portekizce";
++    if (lang == "ara" || lang == "ar") return "Arapça";
 +    return lang;
 +}
 +
@@ -91,7 +91,7 @@
  
      this->registerAction("hints/cancel"_i18n, brls::BUTTON_B, [](...) {
          brls::Application::popActivity();
-@@ -54,6 +132,93 @@
+@@ -54,6 +132,99 @@
  
  brls::View* PlayerSetting::getDefaultFocus() { return this->settings->getDefaultFocus(); }
  
@@ -115,6 +115,7 @@
 +            [this, tracks, options](int data) {
 +                if (data <= 0) {
 +                    MPVCore::instance().command_async("set", "sid", "no");
++                    MPVCore::instance().command_async("set", "sub-visibility", "no");
 +                    btnSubtitle->setDetailText("Kapalı");
 +                    return;
 +                }
@@ -122,6 +123,9 @@
 +                size_t trackIndex = static_cast<size_t>(data - 1);
 +                if (trackIndex >= tracks.size()) return;
 +
++                MPVCore::instance().command_async("set", "sub-visibility", "yes");
++                MPVCore::instance().command_async("set", "secondary-sub-visibility", "yes");
++                MPVCore::instance().command_async("set", "sub-ass-override", "strip");
 +                MPVCore::instance().command_async("set", "sid", tracks[trackIndex].id);
 +                btnSubtitle->setDetailText(options[data]);
 +            },
