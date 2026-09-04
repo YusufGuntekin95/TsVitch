@@ -1,17 +1,41 @@
 <brls:Box
         axis="column"
-        marginTop="20"
-        marginBottom="8"
-        width="auto"
-        height="auto">
-        <RecyclingGrid
-                paddingLeft="20"
-                paddingRight="20"
-                grow="1"
-                spanCount="@style/tsvitch/grid/span/4"
-                itemHeight="200"
-                wireframe="false"
-                preFetchLine="2"
-                id="home/favorites/recyclingGrid" />
+        width="100%"
+        height="100%"
+        paddingLeft="34"
+        paddingRight="30"
+        paddingTop="24"
+        backgroundColor="@theme/color/nx_background">
 
+    <brls:Box
+            width="100%"
+            height="96"
+            marginBottom="16"
+            alignItems="center">
+        <brls:Box axis="column" grow="1">
+            <brls:Label
+                    text="FAVORİLER"
+                    fontSize="28"
+                    textColor="#ffffff"/>
+            <brls:Label
+                    text="Tek dokunuşla geri dönmek istediğin içerikler"
+                    marginTop="6"
+                    fontSize="14"
+                    textColor="@theme/font/grey"/>
+        </brls:Box>
+        <brls:Label
+                text="NX MEDIA"
+                fontSize="12"
+                textColor="@theme/color/nx_accent"/>
+    </brls:Box>
+
+    <RecyclingGrid
+            paddingLeft="4"
+            paddingRight="4"
+            grow="1"
+            spanCount="@style/tsvitch/grid/span/4"
+            itemHeight="210"
+            wireframe="false"
+            preFetchLine="2"
+            id="home/favorites/recyclingGrid"/>
 </brls:Box>
