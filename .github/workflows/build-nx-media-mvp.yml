@@ -1,9 +1,9 @@
-name: Build NX Media MVP
+name: Build NX Media Subtitle Stable
 
 on:
   push:
     branches:
-      - nx-media-mvp
+      - nx-media-subtitle-stable
   workflow_dispatch:
 
 jobs:
@@ -18,6 +18,11 @@ jobs:
 
       - name: Prepare bundled subtitle font
         run: cp resources/font/switch_font.ttf resources/font/subfont.ttf
+
+      - name: Generate NX Media app icon
+        run: |
+          python3 -m pip install --user pillow
+          python3 scripts/generate_nx_media_icon.py
 
       - name: Apply audio/subtitle menu
         run: patch -p1 --fuzz=3 < .github/patches/subtitle-audio-menu.patch
@@ -134,20 +139,23 @@ jobs:
               mkdir("/config", 0777);
               mkdir(subtitleConfigDir.c_str(), 0777);
               const std::string subtitleFontPath = subtitleConfigDir + "/subfont.ttf";
-              std::ifstream currentSubtitleFont(subtitleFontPath, std::ios::binary);
-              if (!currentSubtitleFont.good()) {
-                  currentSubtitleFont.close();
+
+              struct stat subtitleFontStat{};
+              const bool subtitleFontValid = stat(subtitleFontPath.c_str(), &subtitleFontStat) == 0 && subtitleFontStat.st_size > 1024 * 1024;
+              if (!subtitleFontValid) {
                   std::ifstream bundledSubtitleFont("romfs:/font/subfont.ttf", std::ios::binary);
                   if (bundledSubtitleFont.good()) {
                       std::ofstream outputSubtitleFont(subtitleFontPath, std::ios::binary | std::ios::trunc);
                       outputSubtitleFont << bundledSubtitleFont.rdbuf();
                       outputSubtitleFont.close();
                       brls::Logger::info("NX Media installed subtitle font: {}", subtitleFontPath);
+                  } else {
+                      brls::Logger::error("NX Media bundled subtitle font missing");
                   }
               }
           #endif
           '''
-          if 'NX Media installed subtitle font' not in s:
+          if 'NX Media bundled subtitle font missing' not in s:
               if init_needle not in s:
                   raise SystemExit('MPV init anchor not found')
               s = s.replace(init_needle, init_block, 1)
@@ -156,17 +164,18 @@ jobs:
           option_block = '''    mpvSetOptionString(mpv, "pulse-latency-hacks", "no");
 
           #if defined(__SWITCH__)
-              mpvSetOptionString(mpv, "sub-visibility", "yes");
+              const std::string nxSubtitleDir = ProgramConfig::instance().getConfigDir();
+              // Match the proven Switchfin setup: let libass auto-pick its provider,
+              // use subfont.ttf as the fallback font and point the subtitle font dir
+              // directly at the config directory.
+              mpvSetOptionString(mpv, "sub-fonts-dir", nxSubtitleDir.c_str());
               mpvSetOptionString(mpv, "embeddedfonts", "yes");
-              mpvSetOptionString(mpv, "sub-font-provider", "none");
-              mpvSetOptionString(mpv, "sub-fonts-dir", ProgramConfig::instance().getConfigDir().c_str());
-              mpvSetOptionString(mpv, "sub-ass", "yes");
-              mpvSetOptionString(mpv, "sub-ass-override", "yes");
-              mpvSetOptionString(mpv, "sub-border-size", "2.2");
-              mpvSetOptionString(mpv, "sub-font-size", "42");
+              mpvSetOptionString(mpv, "sub-visibility", "yes");
+              mpvSetOptionString(mpv, "sub-forced-only", "no");
+              mpvSetOptionString(mpv, "subs-fallback", "yes");
           #endif
           '''
-          if 'sub-font-provider' not in s:
+          if 'Match the proven Switchfin setup' not in s:
               if option_needle not in s:
                   raise SystemExit('MPV option anchor not found')
               s = s.replace(option_needle, option_block, 1)
@@ -191,5 +200,5 @@ jobs:
       - name: Upload NX Media
         uses: actions/upload-artifact@v4
         with:
-          name: NXMedia
+          name: NXMedia-subtitle-stable
           path: NXMedia.nro
