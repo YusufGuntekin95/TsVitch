@@ -22,8 +22,68 @@ jobs:
       - name: Apply audio/subtitle menu
         run: patch -p1 --fuzz=3 < .github/patches/subtitle-audio-menu.patch
 
-      - name: Apply Switch subtitle renderer fix
-        run: patch -p1 --fuzz=3 < .github/patches/nx-media-subtitle-engine.patch
+      - name: Register NX Media views and theme
+        run: patch -p1 --fuzz=3 < .github/patches/nx-media-ui-register.patch
+
+      - name: Inject Switch subtitle renderer fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tsvitch/source/view/mpv_core.cpp')
+          s = p.read_text(encoding='utf-8')
+
+          include_needle = '#include <clocale>\n'
+          if '#include <fstream>' not in s:
+              s = s.replace(include_needle, include_needle + '#include <fstream>\n#include <sys/stat.h>\n', 1)
+
+          init_needle = 'void MPVCore::init() {\n    setlocale(LC_NUMERIC, "C");\n'
+          init_block = '''void MPVCore::init() {
+              setlocale(LC_NUMERIC, "C");
+
+          #if defined(__SWITCH__)
+              const std::string subtitleConfigDir = ProgramConfig::instance().getConfigDir();
+              mkdir("/config", 0777);
+              mkdir(subtitleConfigDir.c_str(), 0777);
+              const std::string subtitleFontPath = subtitleConfigDir + "/subfont.ttf";
+              std::ifstream currentSubtitleFont(subtitleFontPath, std::ios::binary);
+              if (!currentSubtitleFont.good()) {
+                  currentSubtitleFont.close();
+                  std::ifstream bundledSubtitleFont("romfs:/font/subfont.ttf", std::ios::binary);
+                  if (bundledSubtitleFont.good()) {
+                      std::ofstream outputSubtitleFont(subtitleFontPath, std::ios::binary | std::ios::trunc);
+                      outputSubtitleFont << bundledSubtitleFont.rdbuf();
+                      outputSubtitleFont.close();
+                      brls::Logger::info("NX Media installed subtitle font: {}", subtitleFontPath);
+                  }
+              }
+          #endif
+          '''
+          if 'NX Media installed subtitle font' not in s:
+              if init_needle not in s:
+                  raise SystemExit('MPV init anchor not found')
+              s = s.replace(init_needle, init_block, 1)
+
+          option_needle = '    mpvSetOptionString(mpv, "pulse-latency-hacks", "no");\n'
+          option_block = '''    mpvSetOptionString(mpv, "pulse-latency-hacks", "no");
+
+          #if defined(__SWITCH__)
+              mpvSetOptionString(mpv, "sub-visibility", "yes");
+              mpvSetOptionString(mpv, "embeddedfonts", "yes");
+              mpvSetOptionString(mpv, "sub-font-provider", "none");
+              mpvSetOptionString(mpv, "sub-fonts-dir", ProgramConfig::instance().getConfigDir().c_str());
+              mpvSetOptionString(mpv, "sub-ass", "yes");
+              mpvSetOptionString(mpv, "sub-ass-override", "yes");
+              mpvSetOptionString(mpv, "sub-border-size", "2.2");
+              mpvSetOptionString(mpv, "sub-font-size", "42");
+          #endif
+          '''
+          if 'sub-font-provider' not in s:
+              if option_needle not in s:
+                  raise SystemExit('MPV option anchor not found')
+              s = s.replace(option_needle, option_block, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Build Nintendo Switch NRO
         run: |
@@ -36,11 +96,11 @@ jobs:
             -v $(pwd):/data devkitpro/devkita64:latest \
             bash -c "/data/scripts/build_switch.sh"
 
-      - name: Name MVP build
-        run: cp cmake-build-switch/TsVitch.nro cmake-build-switch/NXMedia-MVP.nro
+      - name: Name NX Media build
+        run: cp cmake-build-switch/TsVitch.nro cmake-build-switch/NXMedia.nro
 
-      - name: Upload NX Media MVP
+      - name: Upload NX Media
         uses: actions/upload-artifact@v4
         with:
-          name: NXMedia-MVP
-          path: cmake-build-switch/NXMedia-MVP.nro
+          name: NXMedia
+          path: cmake-build-switch/NXMedia.nro
