@@ -1,0 +1,116 @@
+--- a/tsvitch/include/view/video_view.hpp
++++ b/tsvitch/include/view/video_view.hpp
+@@ -224,6 +224,9 @@ private:
+     BRLS_BIND(brls::Label, videoTitleLabel, "video/osd/title");
+     BRLS_BIND(brls::Box, osdTopBox, "video/osd/top/box");
+     BRLS_BIND(brls::Box, osdBottomBox, "video/osd/bottom/box");
++    // NX Media fallback subtitle renderer. This is deliberately a Borealis
++    // overlay so text subtitles do not depend on mpv's Deko3D OSD path.
++    BRLS_BIND(brls::Box, subtitleBox, "video/subtitle/box");
++    BRLS_BIND(brls::Label, subtitleLabel, "video/subtitle/label");
+ 
+     BRLS_BIND(brls::Box, osdCenterBox, "video/osd/center/box");
+     BRLS_BIND(brls::ProgressSpinner, osdSpinner, "video/osd/loading");
+@@ -266,6 +269,8 @@ private:
+     bool is_osd_shown          = false;
+     bool is_osd_lock           = false;
+     bool hide_lock_button      = false;
++    int64_t subtitlePollTick   = -1;
++    std::string subtitleText;
+ 
+     int real_duration          = 0;
+     time_t hintLastShowTime    = 0;
+--- a/tsvitch/source/view/video_view.cpp
++++ b/tsvitch/source/view/video_view.cpp
+@@ -432,6 +432,31 @@ void VideoView::draw(NVGcontext* vg, float x, float y, float width, float height
+ 
+     mpvCore->draw(brls::Rect(x, y, width, height), alpha);
+ 
++    // Deko3D builds of older libmpv can successfully select a subtitle track
++    // while failing to composite the subtitle OSD. For text subtitles, ask mpv
++    // for the already decoded plain subtitle text and draw it with Borealis.
++    // Poll at 10 Hz to avoid a property allocation on every rendered frame.
++    const int64_t currentSubtitleTick = static_cast<int64_t>(mpvCore->playback_time * 10.0);
++    if (currentSubtitleTick != subtitlePollTick) {
++        subtitlePollTick = currentSubtitleTick;
++        subtitleText.clear();
++
++        mpv_handle* handle = mpvCore->getHandle();
++        char* rawSubtitle = nullptr;
++        if (handle && mpvGetProperty(handle, "sub-text", MPV_FORMAT_STRING, &rawSubtitle) >= 0 && rawSubtitle) {
++            subtitleText = rawSubtitle;
++            mpvFree(rawSubtitle);
++        }
++
++        if (subtitleText.empty()) {
++            subtitleBox->setVisibility(brls::Visibility::GONE);
++        } else {
++            subtitleLabel->setText(subtitleText);
++            subtitleBox->setVisibility(brls::Visibility::VISIBLE);
++        }
++    }
++
++    if (!subtitleText.empty()) subtitleBox->frame(ctx);
++
+     if (HIGHLIGHT_PROGRESS_BAR && (!drawOSD || is_osd_lock)) {
+         drawHighlightProgress(vg, x, y + height, width, alpha);
+     }
+--- a/resources/xml/views/video_view.xml
++++ b/resources/xml/views/video_view.xml
+@@ -236,6 +236,27 @@
+                 </brls:Box>
+         </brls:Box>
+ 
++        <!-- Native NX Media subtitle layer. mpv's sub-text property feeds this
++             label on Switch, bypassing the Deko3D OSD compositor for SRT/ASS/
++             WebVTT and other text subtitle formats. -->
++        <brls:Box
++                id="video/subtitle/box"
++                positionType="absolute"
++                positionLeft="7%"
++                positionBottom="92"
++                width="86%"
++                height="auto"
++                visibility="gone"
++                justifyContent="center"
++                alignItems="center"
++                cornerRadius="7"
++                backgroundColor="#000000B8">
++                <brls:Label
++                        id="video/subtitle/label"
++                        width="100%"
++                        height="auto"
++                        margin="10"
++                        fontSize="30"
++                        horizontalAlign="center"
++                        verticalAlign="center"
++                        textColor="#FFFFFF" />
++        </brls:Box>
++
+         <VideoProfile
+                 id="video/profile"
+                 positionTop="22"
+--- a/tsvitch/source/view/mpv_core.cpp
++++ b/tsvitch/source/view/mpv_core.cpp
+@@ -304,6 +304,8 @@ void MPVCore::init() {
+     mpvSetOptionString(mpv, "hr-seek", "yes");
+     mpvSetOptionString(mpv, "reset-on-next-file", "speed,pause");
+     mpvSetOptionString(mpv, "vo", "libmpv");
++    mpvSetOptionString(mpv, "blend-subtitles", "yes");
++    mpvSetOptionString(mpv, "subs-fallback", "yes");
+     mpvSetOptionString(mpv, "pulse-latency-hacks", "no");
+ 
+     mpvSetOption(mpv, "brightness", MPV_FORMAT_DOUBLE, &MPVCore::VIDEO_BRIGHTNESS);
+@@ -391,11 +393,9 @@ void MPVCore::init() {
+     mpv_render_param params[]{{MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_SW)},
+                               {MPV_RENDER_PARAM_INVALID, nullptr}};
+ #elif defined(BOREALIS_USE_DEKO3D)
+-    int advanced_control{1};
+     auto switchPlatform = (brls::SwitchVideoContext *)brls::Application::getPlatform()->getVideoContext();
+     mpv_deko3d_init_params deko_init_params{switchPlatform->getDeko3dDevice()};
+     mpv_render_param params[]{{MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_DEKO3D)},
+                               {MPV_RENDER_PARAM_DEKO3D_INIT_PARAMS, &deko_init_params},
+-                              {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced_control},
+                               {MPV_RENDER_PARAM_INVALID, nullptr}};
+ #elif defined(BOREALIS_USE_D3D11)
+     mpv_dxgi_init_params init_params{D3D11_CONTEXT->getDevice(), D3D11_CONTEXT->getSwapChain()};
