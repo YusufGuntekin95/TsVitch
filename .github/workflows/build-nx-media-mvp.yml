@@ -24,8 +24,248 @@ jobs:
           python3 -m pip install --user pillow
           python3 scripts/generate_nx_media_icon.py
 
-      - name: Apply audio/subtitle menu
-        run: patch -p1 --fuzz=3 < .github/patches/subtitle-audio-menu.patch
+      - name: Inject audio subtitle track menu
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          cpp = Path('tsvitch/source/fragment/player_setting.cpp')
+          s = cpp.read_text(encoding='utf-8')
+
+          helper_anchor = 'using namespace brls::literals;\n'
+          helper = r'''
+
+          namespace {
+          struct PlayerTrack {
+              int64_t id = -1;
+              std::string type;
+              std::string lang;
+              std::string title;
+              std::string codec;
+              bool selected = false;
+          };
+
+          std::string languageLabel(const std::string& lang) {
+              if (lang == "tur" || lang == "tr") return "Türkçe";
+              if (lang == "eng" || lang == "en") return "İngilizce";
+              if (lang == "deu" || lang == "ger" || lang == "de") return "Almanca";
+              if (lang == "fra" || lang == "fre" || lang == "fr") return "Fransızca";
+              if (lang == "ita" || lang == "it") return "İtalyanca";
+              if (lang == "spa" || lang == "es") return "İspanyolca";
+              if (lang == "por" || lang == "pt") return "Portekizce";
+              if (lang == "ara" || lang == "ar") return "Arapça";
+              return lang;
+          }
+
+          std::string trackLabel(const PlayerTrack& track, size_t fallbackIndex) {
+              if (!track.title.empty()) return track.title;
+              std::string lang = languageLabel(track.lang);
+              if (!lang.empty()) return lang;
+              if (track.type == "audio") return fmt::format("Ses {}", fallbackIndex + 1);
+              return fmt::format("Altyazı {}", fallbackIndex + 1);
+          }
+
+          std::vector<PlayerTrack> getPlayerTracks(const std::string& wantedType) {
+              std::vector<PlayerTrack> tracks;
+              mpv_handle* handle = MPVCore::instance().getHandle();
+              if (!handle) return tracks;
+
+              mpv_node node{};
+              if (mpvGetProperty(handle, "track-list", MPV_FORMAT_NODE, &node) < 0) return tracks;
+              if (node.format != MPV_FORMAT_NODE_ARRAY || node.u.list == nullptr) {
+                  mpvFreeNodeContents(&node);
+                  return tracks;
+              }
+
+              mpv_node_list* list = node.u.list;
+              for (int i = 0; i < list->num; i++) {
+                  const mpv_node& item = list->values[i];
+                  if (item.format != MPV_FORMAT_NODE_MAP || item.u.list == nullptr) continue;
+
+                  PlayerTrack track;
+                  mpv_node_list* map = item.u.list;
+                  for (int j = 0; j < map->num; j++) {
+                      if (map->keys[j] == nullptr) continue;
+                      const std::string key = map->keys[j];
+                      const mpv_node& value = map->values[j];
+                      if (key == "id" && value.format == MPV_FORMAT_INT64) {
+                          track.id = value.u.int64;
+                      } else if (key == "type" && value.format == MPV_FORMAT_STRING && value.u.string) {
+                          track.type = value.u.string;
+                      } else if (key == "lang" && value.format == MPV_FORMAT_STRING && value.u.string) {
+                          track.lang = value.u.string;
+                      } else if (key == "title" && value.format == MPV_FORMAT_STRING && value.u.string) {
+                          track.title = value.u.string;
+                      } else if (key == "codec" && value.format == MPV_FORMAT_STRING && value.u.string) {
+                          track.codec = value.u.string;
+                      } else if (key == "selected" && value.format == MPV_FORMAT_FLAG) {
+                          track.selected = value.u.flag != 0;
+                      }
+                  }
+                  if (track.type == wantedType && track.id >= 0) tracks.push_back(track);
+              }
+
+              mpvFreeNodeContents(&node);
+              return tracks;
+          }
+          }  // namespace
+          '''
+          if 'struct PlayerTrack' not in s:
+              if helper_anchor not in s:
+                  raise SystemExit('player_setting helper anchor not found')
+              s = s.replace(helper_anchor, helper_anchor + helper, 1)
+
+          if '    setupTrackSetting();\n' not in s:
+              needle = '    setupCommonSetting();\n'
+              if needle not in s:
+                  raise SystemExit('setupCommonSetting call not found')
+              s = s.replace(needle, needle + '    setupTrackSetting();\n', 1)
+
+          track_methods = r'''
+
+          void PlayerSetting::setupTrackSetting() {
+              btnSubtitle->setText("Altyazı");
+              btnAudioTrack->setText("Ses dili");
+              refreshTrackDetails();
+
+              btnSubtitle->registerClickAction([this](View* view) {
+                  auto tracks = getPlayerTracks("sub");
+                  std::vector<std::string> options = {"Kapalı"};
+                  int selectedIndex = 0;
+
+                  for (size_t i = 0; i < tracks.size(); i++) {
+                      options.push_back(trackLabel(tracks[i], i));
+                      if (tracks[i].selected) selectedIndex = static_cast<int>(i) + 1;
+                  }
+
+                  BaseDropdown::text(
+                      "Altyazı", options,
+                      [this, tracks, options](int data) {
+                          if (data <= 0) {
+                              MPVCore::instance().command_async("set", "sid", "no");
+                              MPVCore::instance().command_async("set", "sub-visibility", "no");
+                              btnSubtitle->setDetailText("Kapalı");
+                              return;
+                          }
+
+                          const size_t trackIndex = static_cast<size_t>(data - 1);
+                          if (trackIndex >= tracks.size()) return;
+                          const auto& track = tracks[trackIndex];
+
+                          brls::Logger::info("NX Media subtitle selected id={} lang={} codec={} title={}",
+                                             track.id, track.lang, track.codec, track.title);
+                          MPVCore::instance().command_async("set", "sid", track.id);
+                          MPVCore::instance().command_async("set", "sub-forced-only", "no");
+                          MPVCore::instance().command_async("set", "sub-visibility", "yes");
+                          btnSubtitle->setDetailText(options[data]);
+                      },
+                      selectedIndex);
+                  return true;
+              });
+
+              btnAudioTrack->registerClickAction([this](View* view) {
+                  auto tracks = getPlayerTracks("audio");
+                  if (tracks.empty()) {
+                      btnAudioTrack->setDetailText("Yok");
+                      return true;
+                  }
+
+                  std::vector<std::string> options;
+                  int selectedIndex = 0;
+                  for (size_t i = 0; i < tracks.size(); i++) {
+                      options.push_back(trackLabel(tracks[i], i));
+                      if (tracks[i].selected) selectedIndex = static_cast<int>(i);
+                  }
+
+                  BaseDropdown::text(
+                      "Ses dili", options,
+                      [this, tracks, options](int data) {
+                          if (data < 0 || static_cast<size_t>(data) >= tracks.size()) return;
+                          MPVCore::instance().command_async("set", "aid", tracks[data].id);
+                          btnAudioTrack->setDetailText(options[data]);
+                      },
+                      selectedIndex);
+                  return true;
+              });
+          }
+
+          void PlayerSetting::refreshTrackDetails() {
+              auto subtitles = getPlayerTracks("sub");
+              std::string subtitleDetail = "Kapalı";
+              for (size_t i = 0; i < subtitles.size(); i++) {
+                  if (subtitles[i].selected) {
+                      subtitleDetail = trackLabel(subtitles[i], i);
+                      break;
+                  }
+              }
+              btnSubtitle->setDetailText(subtitleDetail);
+
+              auto audioTracks = getPlayerTracks("audio");
+              if (audioTracks.empty()) {
+                  btnAudioTrack->setDetailText("Yok");
+                  return;
+              }
+
+              std::string audioDetail = trackLabel(audioTracks[0], 0);
+              for (size_t i = 0; i < audioTracks.size(); i++) {
+                  if (audioTracks[i].selected) {
+                      audioDetail = trackLabel(audioTracks[i], i);
+                      break;
+                  }
+              }
+              btnAudioTrack->setDetailText(audioDetail);
+          }
+          '''
+          if 'void PlayerSetting::setupTrackSetting()' not in s:
+              needle = 'void PlayerSetting::setupCommonSetting() {'
+              if needle not in s:
+                  raise SystemExit('setupCommonSetting definition not found')
+              s = s.replace(needle, track_methods + '\n\n' + needle, 1)
+          cpp.write_text(s, encoding='utf-8')
+
+          hpp = Path('tsvitch/include/fragment/player_setting.hpp')
+          s = hpp.read_text(encoding='utf-8')
+          if 'void setupTrackSetting();' not in s:
+              needle = '    void setupCommonSetting();\n'
+              if needle not in s:
+                  raise SystemExit('player_setting.hpp method anchor not found')
+              s = s.replace(needle, needle + '    void setupTrackSetting();\n    void refreshTrackDetails();\n', 1)
+          if 'btnSubtitle' not in s:
+              needle = '    BRLS_BIND(brls::DetailCell, btnSleep, "setting/sleep");\n'
+              if needle not in s:
+                  raise SystemExit('player_setting.hpp binding anchor not found')
+              s = s.replace(needle, needle + '    BRLS_BIND(brls::DetailCell, btnSubtitle, "setting/track/subtitle");\n    BRLS_BIND(brls::DetailCell, btnAudioTrack, "setting/track/audio");\n', 1)
+          hpp.write_text(s, encoding='utf-8')
+
+          xml = Path('resources/xml/fragment/player_setting.xml')
+          s = xml.read_text(encoding='utf-8')
+          if 'setting/track/subtitle' not in s:
+              anchor = '''                </brls:Box>
+                <brls:Header
+                        id="setting/video/custom/header"'''
+              section = '''                </brls:Box>
+
+                <brls:Header
+                        width="auto"
+                        height="auto"
+                        title="Ses ve Altyazı"
+                        marginBottom="0px"/>
+                <brls:Box
+                        width="100%"
+                        height="auto"
+                        axis="column"
+                        marginBottom="30px">
+                    <brls:DetailCell id="setting/track/subtitle"/>
+                    <brls:DetailCell id="setting/track/audio"/>
+                </brls:Box>
+
+                <brls:Header
+                        id="setting/video/custom/header"'''
+              if anchor not in s:
+                  raise SystemExit('player_setting.xml anchor not found')
+              s = s.replace(anchor, section, 1)
+          xml.write_text(s, encoding='utf-8')
+          PY
 
       - name: Register NX Media views and theme
         run: |
@@ -135,27 +375,30 @@ jobs:
               setlocale(LC_NUMERIC, "C");
 
           #if defined(__SWITCH__)
-              const std::string subtitleConfigDir = ProgramConfig::instance().getConfigDir();
-              mkdir("/config", 0777);
-              mkdir(subtitleConfigDir.c_str(), 0777);
-              const std::string subtitleFontPath = subtitleConfigDir + "/subfont.ttf";
+              mkdir("sdmc:/config", 0777);
+              mkdir("sdmc:/config/tsvitch", 0777);
+              mkdir("sdmc:/switch/NXMedia", 0777);
 
-              struct stat subtitleFontStat{};
-              const bool subtitleFontValid = stat(subtitleFontPath.c_str(), &subtitleFontStat) == 0 && subtitleFontStat.st_size > 1024 * 1024;
-              if (!subtitleFontValid) {
-                  std::ifstream bundledSubtitleFont("romfs:/font/subfont.ttf", std::ios::binary);
-                  if (bundledSubtitleFont.good()) {
-                      std::ofstream outputSubtitleFont(subtitleFontPath, std::ios::binary | std::ios::trunc);
-                      outputSubtitleFont << bundledSubtitleFont.rdbuf();
-                      outputSubtitleFont.close();
-                      brls::Logger::info("NX Media installed subtitle font: {}", subtitleFontPath);
-                  } else {
+              auto installSubtitleFont = [](const std::string& targetPath) {
+                  struct stat st{};
+                  if (stat(targetPath.c_str(), &st) == 0 && st.st_size > 1024 * 1024) return;
+
+                  std::ifstream bundled("romfs:/font/subfont.ttf", std::ios::binary);
+                  if (!bundled.good()) {
                       brls::Logger::error("NX Media bundled subtitle font missing");
+                      return;
                   }
-              }
+                  std::ofstream output(targetPath, std::ios::binary | std::ios::trunc);
+                  output << bundled.rdbuf();
+                  output.close();
+                  brls::Logger::info("NX Media installed subtitle font: {}", targetPath);
+              };
+
+              installSubtitleFont("sdmc:/config/tsvitch/subfont.ttf");
+              installSubtitleFont("sdmc:/switch/NXMedia/subfont.ttf");
           #endif
           '''
-          if 'NX Media bundled subtitle font missing' not in s:
+          if 'sdmc:/switch/NXMedia/subfont.ttf' not in s:
               if init_needle not in s:
                   raise SystemExit('MPV init anchor not found')
               s = s.replace(init_needle, init_block, 1)
@@ -164,18 +407,17 @@ jobs:
           option_block = '''    mpvSetOptionString(mpv, "pulse-latency-hacks", "no");
 
           #if defined(__SWITCH__)
-              const std::string nxSubtitleDir = ProgramConfig::instance().getConfigDir();
-              // Match the proven Switchfin setup: let libass auto-pick its provider,
-              // use subfont.ttf as the fallback font and point the subtitle font dir
-              // directly at the config directory.
-              mpvSetOptionString(mpv, "sub-fonts-dir", nxSubtitleDir.c_str());
+              // libmpv on Switch resolves device-prefixed paths reliably. Keep the
+              // app config itself untouched, but point mpv/libass at the same SD
+              // directory through sdmc:, exactly like native Switch players do.
+              mpvSetOptionString(mpv, "config-dir", "sdmc:/config/tsvitch");
+              mpvSetOptionString(mpv, "sub-fonts-dir", "sdmc:/config/tsvitch");
               mpvSetOptionString(mpv, "embeddedfonts", "yes");
               mpvSetOptionString(mpv, "sub-visibility", "yes");
               mpvSetOptionString(mpv, "sub-forced-only", "no");
-              mpvSetOptionString(mpv, "subs-fallback", "yes");
           #endif
           '''
-          if 'Match the proven Switchfin setup' not in s:
+          if 'libmpv on Switch resolves device-prefixed paths reliably' not in s:
               if option_needle not in s:
                   raise SystemExit('MPV option anchor not found')
               s = s.replace(option_needle, option_block, 1)
